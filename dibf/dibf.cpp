@@ -567,7 +567,7 @@ BOOL CtrlHandlerRoutine(DWORD dwCtrlType)
 //
 INT _tmain(INT argc, _TCHAR* argv[])
 {
-	SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandlerRoutine, TRUE);
+    SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandlerRoutine, TRUE);
     Dibf dibf;
     dibf.start(argc, argv);
     return 0;
