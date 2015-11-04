@@ -44,11 +44,13 @@ DWORD SyncFuzzer::FuzzProc(PVOID param)
             InterlockedIncrement(&tracker.stats.SentRequests);
             InterlockedIncrement(&tracker.stats.CompletedRequests);
             if(bResult) {
+                request.checkForIL();
                 TPRINT(VERBOSITY_ALL, _T("TID[%.5u]: Sync request %#.8x (iocode %#.8x) completed successfully\n"), threadID, &request, request.GetIoCode());
                 InterlockedIncrement(&tracker.stats.SuccessfulRequests);
                 nbConsecutiveFailures = 0;
             }
             else {
+                request.checkForIL();
                 TPRINT(VERBOSITY_ALL, _T("TID[%.5u]: Sync request %#.8x (iocode %#.8x) completed with error %#.8x\n"), threadID, &request, request.GetIoCode(), GetLastError());
                 InterlockedIncrement(&tracker.stats.FailedRequests);
                 nbConsecutiveFailures++;

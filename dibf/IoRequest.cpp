@@ -14,12 +14,12 @@ const DWORD IoRequest::invalidBufSizeErrorCodes[] = {
 };
 
 // Simple constructors
-IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), outBuf(DEFAULT_OUTLEN)
+IoRequest::IoRequest(HANDLE hDev) : hDev(hDev), outBuf(DEFAULT_OUTLEN+CANARY_SIZE)
 {
     ZeroMemory(&overlp, sizeof(overlp));
 }
 
-IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code), outBuf(DEFAULT_OUTLEN)
+IoRequest::IoRequest(HANDLE hDev, DWORD code) : hDev(hDev), iocode(code), outBuf(DEFAULT_OUTLEN+CANARY_SIZE)
 {
     ZeroMemory(&overlp, sizeof(overlp));
 }
@@ -40,11 +40,53 @@ BOOL IoRequest::allocBuffers(DWORD inSize, DWORD outSize)
     BOOL bResult=TRUE;
     try {
         inBuf.resize(inSize);
-        outBuf.resize(outSize);
+        outBuf.resize(outSize+CANARY_SIZE);
         bResult = TRUE;
     }
     catch(bad_alloc) {
         bResult = FALSE;
+    }
+    return bResult;
+}
+
+BOOL IoRequest::addCanary()
+{
+    DWORD i;
+    DWORD outBufSize = getOutputBufferLength();
+    DWORD outBufRealSize = outBufSize + CANARY_SIZE;
+    for (i = outBufSize; i < outBufRealSize; i++) {
+        outBuf[i] = CANARY;
+    }
+    return TRUE;
+}
+
+BOOL IoRequest::checkForIL()
+{
+    BOOL bResult = FALSE;
+    DWORD i;
+    DWORD outBufSize = getOutputBufferLength();
+    DWORD outBufRealSize = outBufSize + CANARY_SIZE;
+
+    if (IL_CHECK & 0x1) {
+        for (i = outBufSize; i < outBufRealSize; i++) {
+            if (outBuf[i] != CANARY) {
+                bResult = TRUE;
+                TPRINT(VERBOSITY_INFO, _T("Canary value corrupted (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[outBufSize]));
+                break;
+            }
+        }
+    }
+
+    //Check outbuf for things that look like kernel pointers
+    // TODO: Make this work for 32 bit
+    if (IL_CHECK & 0x2 && outBufSize >= sizeof(PVOID)) {
+        for (i = 0; i < outBufRealSize - sizeof(PVOID); i++) {
+            if (*(PDWORD)(&(outBuf)[i]) > 0xFFFFF6FF) {
+                bResult = TRUE;
+                TPRINT(VERBOSITY_INFO, _T("Possible kernel pointer in buffer (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[i]));
+                break;
+            }
+        }
     }
     return bResult;
 }
@@ -129,8 +171,8 @@ BOOL IoRequest::testSendForValidBufferSize(DWORD testSize)
 
 BOOL IoRequest::fuzz(FuzzingProvider* fp, mt19937* prng)
 {
-    BOOL bResult=FALSE;
-
-    bResult = fp->GetRandomIoctlAndBuffer(iocode, inBuf, prng);
-    return bResult;
+    BOOL bResult1=FALSE, bResult2=FALSE;
+    bResult1 = addCanary();
+    bResult2 = fp->GetRandomIoctlAndBuffer(iocode, inBuf, prng);
+    return (bResult1 && bResult2);
 }

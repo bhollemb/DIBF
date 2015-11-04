@@ -204,11 +204,13 @@ BOOL AsyncFuzzer::DequeueIoPacket(IoRequest **request)
             }
             else {
                 InterlockedIncrement(&Fuzzer::tracker.stats.FailedRequests);
+                (*request)->checkForIL();
                 TPRINT(VERBOSITY_ALL, _T("TID[%.5u]: Async request %#.8x (iocode %#.8x) completed with error %#.8x\n"), threadID, *request, (*request)->GetIoCode(), GetLastError());
             }
         }
         else {
             InterlockedIncrement(&Fuzzer::tracker.stats.SuccessfulRequests);
+            (*request)->checkForIL();
             TPRINT(VERBOSITY_ALL, _T("TID[%.5u]: Async request %#.8x (iocode %#.8x) completed successfully\n"), threadID, *request, (*request)->GetIoCode());
         }
         InterlockedDecrement(&Fuzzer::tracker.stats.PendingRequests);
@@ -298,10 +300,12 @@ DWORD WINAPI AsyncFuzzer::Iocallback(PVOID param)
                         InterlockedIncrement(&Fuzzer::tracker.stats.SynchronousRequests);
                         if(status==DIBF_SUCCESS){
                             InterlockedIncrement(&Fuzzer::tracker.stats.SuccessfulRequests);
+                            request->checkForIL();
                             TPRINT(VERBOSITY_ALL, _T("TID[%.5u]: Request %#.8x (iocode %#.8x) synchronously completed successfully\n"), threadID, request, request->GetIoCode());
                         }
                         else {
                             InterlockedIncrement(&Fuzzer::tracker.stats.FailedRequests);
+                            request->checkForIL();
                             TPRINT(VERBOSITY_ALL, _T("TID[%.5u]: Request %#.8x (iocode %#.8x) synchronously completed with error %#.8x\n"), threadID, request, request->GetIoCode(), GetLastError());
                         }
                     }
