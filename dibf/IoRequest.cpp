@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "IoRequest.h"
 
+DWORD IoRequest::hasWritten = 0x0;
+
 // Statics initialization
 const DWORD IoRequest::invalidIoctlErrorCodes[] = {
     ERROR_INVALID_FUNCTION,
@@ -72,6 +74,12 @@ BOOL IoRequest::checkForIL()
             if (outBuf[i] != CANARY) {
                 bResult = TRUE;
                 TPRINT(VERBOSITY_INFO, _T("Canary value corrupted (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[outBufSize]));
+                if (!(hasWritten & 0x1)) {
+                    bResult = writeIL(*(PVOID*)(&(outBuf)[outBufSize]), TRUE);
+                    if (bResult) {
+                        hasWritten = hasWritten | 0x1;
+                    }
+                }
                 break;
             }
         }
@@ -85,8 +93,71 @@ BOOL IoRequest::checkForIL()
                 bResult = TRUE;
                 TPRINT(VERBOSITY_INFO, _T("Possible kernel pointer in buffer (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[i]));
                 break;
+                if (!(hasWritten & 0x2)) {
+                    bResult = writeIL(*(PVOID*)(&(outBuf)[i]), FALSE);
+                    if (bResult) {
+                        hasWritten = hasWritten | 0x2;
+                    }
+                }
             }
         }
+    }
+
+    return bResult;
+}
+
+BOOL IoRequest::writeIL(PVOID ptr, BOOL isCanary)
+{
+    BOOL bResult = FALSE;
+    Dibf dibf;
+    ofstream logFile;
+    LPTSTR procName = new TCHAR[MAX_PATH];
+    DWORD size = 0;
+    bResult = QueryFullProcessImageName(hDev, 0, procName, &size); // TODO: remove full path, make short
+    if (!bResult) {
+        procName = L"default";
+    }
+    tstring filename = (isCanary) ? L"canary_" : L"lookalike_";
+    filename.append(procName);
+    filename.append(L".txt");
+    // Open the log file
+    logFile.open((LPCTSTR)filename);
+    if (logFile.good()) {
+        logFile << "Device Name: " << procName << "\n";
+        logFile << "dwIoControlCode: " << iocode << "\n";
+        logFile << "nInBufferSize: " << getInputBufferLength() << "\n";
+        logFile << "nOutBufferSize: " << getOutputBufferLength() << "\n";
+        TPRINT(VERBOSITY_INFO, _T("Successfully written metadata for leak to log file %s\n"), (LPCTSTR)filename);
+        logFile.close();
+    }
+    else {
+        TPRINT(VERBOSITY_ERROR, _T("Error creating/opening metadata log file %s\n"), (LPCTSTR)filename);
+    }
+
+    tstring filenamein = L"inbuf_";
+    filenamein.append(filename);
+    logFile.open((LPCTSTR)filenamein, ios::out | ios::binary);
+    if (logFile.good()) {
+        std::copy(inBuf.begin(), inBuf.end(), std::ostreambuf_iterator<char>(logFile));
+        TPRINT(VERBOSITY_INFO, _T("Successfully written inbuf for leak to log file %s\n"), (LPCTSTR)filenamein);
+        logFile.close();
+    }
+    else {
+        TPRINT(VERBOSITY_ERROR, _T("Error creating/opening inbuf log file %s\n"), (LPCTSTR)filenamein);
+    }
+
+    tstring filenameout = L"outbuf_";
+    filenameout.append(filename);
+    logFile.open((LPCTSTR)filenameout, ios::out | ios::binary);
+    if (logFile.good()) {
+        std::copy(outBuf.begin(), outBuf.end(), std::ostreambuf_iterator<char>(logFile));
+        TPRINT(VERBOSITY_INFO, _T("Successfully written outbuf for leak to log file %s\n"), (LPCTSTR)filenameout);
+        logFile.close();
+        bResult = TRUE;
+    }
+    else {
+        TPRINT(VERBOSITY_ERROR, _T("Error creating/opening outbuf log file %s\n"), (LPCTSTR)filenameout);
+        bResult = FALSE;
     }
     return bResult;
 }

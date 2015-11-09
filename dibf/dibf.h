@@ -12,8 +12,8 @@ public:
     BOOL start(INT, _TCHAR**);
 private:
     // Vars
-    tstring deviceName;
     tstring fileName;
+    tstring deviceName;
     BOOL gotDeviceName;
     BOOL gotFileName;
     vector<IoctlDef> ioctls;

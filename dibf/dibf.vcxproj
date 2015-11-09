@@ -22,6 +22,7 @@
     <ProjectGuid>{E1847B66-B223-448D-A82F-0399A13404F1}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>dibf</RootNamespace>
+    <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
