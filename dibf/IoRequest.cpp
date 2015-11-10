@@ -1,7 +1,7 @@
 #include "stdafx.h"
 #include "IoRequest.h"
 
-DWORD IoRequest::hasWritten = 0x0;
+LONG IoRequest::hasWritten = 0x0;
 
 // Statics initialization
 const DWORD IoRequest::invalidIoctlErrorCodes[] = {
@@ -73,12 +73,9 @@ BOOL IoRequest::checkForIL()
         for (i = outBufSize; i < outBufRealSize; i++) {
             if (outBuf[i] != CANARY) {
                 bResult = TRUE;
-                TPRINT(VERBOSITY_INFO, _T("Canary value corrupted (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[outBufSize]));
-                if (!(hasWritten & 0x1)) {
+                TPRINT(VERBOSITY_ALL, _T("Canary value corrupted (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[outBufSize]));
+                if (!(InterlockedOr(&hasWritten, (LONG)0x1) & 0x1)) {
                     bResult = writeIL(*(PVOID*)(&(outBuf)[outBufSize]), TRUE);
-                    if (bResult) {
-                        hasWritten = hasWritten | 0x1;
-                    }
                 }
                 break;
             }
@@ -91,13 +88,10 @@ BOOL IoRequest::checkForIL()
         for (i = 0; i < outBufRealSize - sizeof(PVOID); i++) {
             if (*(PDWORD)(&(outBuf)[i]) > 0xFFFFF6FF) {
                 bResult = TRUE;
-                TPRINT(VERBOSITY_INFO, _T("Possible kernel pointer in buffer (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[i]));
+                TPRINT(VERBOSITY_ALL, _T("Possible kernel pointer in buffer (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[i]));
                 break;
-                if (!(hasWritten & 0x2)) {
+                if (!(InterlockedOr(&hasWritten, (LONG)0x2) & 0x2)) {
                     bResult = writeIL(*(PVOID*)(&(outBuf)[i]), FALSE);
-                    if (bResult) {
-                        hasWritten = hasWritten | 0x2;
-                    }
                 }
             }
         }
@@ -109,25 +103,17 @@ BOOL IoRequest::checkForIL()
 BOOL IoRequest::writeIL(PVOID ptr, BOOL isCanary)
 {
     BOOL bResult = FALSE;
-    Dibf dibf;
     ofstream logFile;
-    LPTSTR procName = new TCHAR[MAX_PATH];
-    DWORD size = 0;
-    bResult = QueryFullProcessImageName(hDev, 0, procName, &size); // TODO: remove full path, make short
-    if (!bResult) {
-        procName = L"default";
-    }
     tstring filename = (isCanary) ? L"canary_" : L"lookalike_";
-    filename.append(procName);
-    filename.append(L".txt");
+    filename.append(Dibf::fileName);
     // Open the log file
     logFile.open((LPCTSTR)filename);
     if (logFile.good()) {
-        logFile << "Device Name: " << procName << "\n";
+        logFile << "LogFile Name: " << Dibf::fileName << "\n";
         logFile << "dwIoControlCode: " << iocode << "\n";
         logFile << "nInBufferSize: " << getInputBufferLength() << "\n";
         logFile << "nOutBufferSize: " << getOutputBufferLength() << "\n";
-        TPRINT(VERBOSITY_INFO, _T("Successfully written metadata for leak to log file %s\n"), (LPCTSTR)filename);
+        TPRINT(VERBOSITY_INFO, _T("Successfully written metadata for iocode: %#.8x leak to log file %s\n"), iocode, (LPCTSTR)filename);
         logFile.close();
     }
     else {
@@ -151,7 +137,7 @@ BOOL IoRequest::writeIL(PVOID ptr, BOOL isCanary)
     logFile.open((LPCTSTR)filenameout, ios::out | ios::binary);
     if (logFile.good()) {
         std::copy(outBuf.begin(), outBuf.end(), std::ostreambuf_iterator<char>(logFile));
-        TPRINT(VERBOSITY_INFO, _T("Successfully written outbuf for leak to log file %s\n"), (LPCTSTR)filenameout);
+        TPRINT(VERBOSITY_INFO, _T("Successfully written outbuf (flagged ptr: 0x%p) for leak to log file %s\n"), ptr, (LPCTSTR)filenameout);
         logFile.close();
         bResult = TRUE;
     }

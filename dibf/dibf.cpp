@@ -14,6 +14,8 @@
 #include "SyncFuzzer.h"
 
 static BOOL userCtrlBreak;
+tstring Dibf::fileName(L"dibf-bruteforce-extended-results.txt"); //Should be good enough?
+
 
 Dibf::Dibf() : gotDeviceName(FALSE)
 {
@@ -95,6 +97,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     ULONG maxThreads=0, timeLimits[3]={INFINITE, INFINITE,INFINITE}, cancelRate=CANCEL_RATE, maxPending=MAX_PENDING;
     gotFileName = FALSE;
     LONG i=1;
+   
 
     // Process options
     for(i=1; validUsage && i<argc; i++) {
@@ -198,7 +201,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
             case L'l':
             case L'L':
                 if(i<argc-1 && !gotFileName) {
-                    fileName.append(tstring(argv[i+1]));
+                    fileName.assign(tstring(argv[i+1]));
                     gotFileName = !fileName.empty();
                     i++;
                 }
@@ -226,7 +229,7 @@ BOOL Dibf::start(INT argc, _TCHAR* argv[])
     if(validUsage) {
         // If the only fuzzer is NP fuzzer, skip all ioctl defs related operations
         if (!gotFileName) {
-            fileName.append(tstring(L"dibf-bf-results.txt")); // Set default name if not specified
+            fileName.assign(tstring(L"dibf-bf-results.txt")); // Set default name if not specified
         }
         if(dwFuzzStage!=NP_FUZZER) {
             // Skip reading from file if -i or if only NP fuzzing

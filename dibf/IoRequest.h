@@ -37,7 +37,7 @@ private:
     // Static arrays of known interesting errors
     static const DWORD invalidIoctlErrorCodes[];
     static const DWORD invalidBufSizeErrorCodes[];
-    static DWORD hasWritten;    // Mask, 0x0=none, 0x1=Canary, 0x2=Lookalike
+    static LONG hasWritten;    // Mask, 0x0=none, 0x1=Canary, 0x2=Lookalike
     // Members
     HANDLE hDev;
     DWORD iocode;

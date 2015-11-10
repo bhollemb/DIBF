@@ -10,12 +10,13 @@ public:
     ~Dibf();
     // Functions
     BOOL start(INT, _TCHAR**);
+    // Vars
+    static tstring fileName;
 private:
     // Vars
-    tstring fileName;
-    tstring deviceName;
     BOOL gotDeviceName;
     BOOL gotFileName;
+    tstring deviceName;
     vector<IoctlDef> ioctls;
     vector<DWORD> bannedErrors;
     map<DWORD, ULONG> returnMap;

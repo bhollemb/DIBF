@@ -58,6 +58,7 @@ public:
     tstring(LPCTSTR s) : str(string(converter.to_bytes(s))) {}
     bool empty() { return str.empty(); }
     tstring &append(tstring other) { str.append(other.str); return *this; }
+    tstring &assign(tstring other) { str.assign(other.str); return *this; }
     operator string() { return str; }
     operator LPCTSTR() { ws=wstring(converter.from_bytes(str)); return ws.c_str(); }
     bool operator==(const tstring &other) const { return (this->str==other.str); }
