@@ -88,11 +88,11 @@ BOOL IoRequest::checkForIL()
         for (i = 0; i < outBufRealSize - sizeof(PVOID); i++) {
             if (*(PDWORD)(&(outBuf)[i]) > 0xFFFFF6FF) {
                 bResult = TRUE;
-                TPRINT(VERBOSITY_ALL, _T("Possible kernel pointer in buffer (%p). Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[i]));
-                break;
+                TPRINT(VERBOSITY_ALL, _T("Possible kernel pointer (%p) in buffer. Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[i]));
                 if (!(InterlockedOr(&hasWritten, (LONG)0x2) & 0x2)) {
                     bResult = writeIL(*(PVOID*)(&(outBuf)[i]), FALSE);
                 }
+				break;
             }
         }
     }
