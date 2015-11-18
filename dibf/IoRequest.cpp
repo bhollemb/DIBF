@@ -86,13 +86,13 @@ BOOL IoRequest::checkForIL()
     // TODO: Make this work for 32 bit
     if (IL_CHECK & 0x2 && outBufSize >= sizeof(PVOID)) {
         for (i = 0; i < outBufRealSize - sizeof(PVOID); i++) {
-            if (*(PDWORD)(&(outBuf)[i]) > 0xFFFFF6FF) {
+            if (*(PVOID*)(&(outBuf)[i]) > (PVOID)0xFFFFF6FF00000000) {
                 bResult = TRUE;
                 TPRINT(VERBOSITY_ALL, _T("Possible kernel pointer (%p) in buffer. Potential infoleak recorded.\n"), *(PVOID*)(&(outBuf)[i]));
                 if (!(InterlockedOr(&hasWritten, (LONG)0x2) & 0x2)) {
                     bResult = writeIL(*(PVOID*)(&(outBuf)[i]), FALSE);
                 }
-				break;
+                break;
             }
         }
     }
