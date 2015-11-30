@@ -105,14 +105,16 @@ BOOL IoRequest::writeIL(PVOID ptr, BOOL isCanary)
     BOOL bResult = FALSE;
     ofstream logFile;
     tstring filename = (isCanary) ? L"canary_" : L"lookalike_";
+	tstring pointer;
     filename.append(Dibf::fileName);
     // Open the log file
     logFile.open((LPCTSTR)filename);
     if (logFile.good()) {
-        logFile << "LogFile Name: " << Dibf::fileName << "\n";
+        logFile << "LogFile Name: " << (LPCTSTR)Dibf::fileName << "\n";
+		logFile << "Pointer: 0x" << std::hex << ptr << "\n";
         logFile << "dwIoControlCode: " << iocode << "\n";
-        logFile << "nInBufferSize: " << getInputBufferLength() << "\n";
-        logFile << "nOutBufferSize: " << getOutputBufferLength() << "\n";
+        logFile << "InBufferSize: " << getInputBufferLength() << "\n";
+        logFile << "OutBufferSize: " << getOutputBufferLength() << "\n";
         TPRINT(VERBOSITY_INFO, _T("Successfully written metadata for iocode: %#.8x leak to log file %s\n"), iocode, (LPCTSTR)filename);
         logFile.close();
     }
